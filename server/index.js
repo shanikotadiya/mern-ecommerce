@@ -4,6 +4,8 @@ const chalk = require('chalk');
 const cors = require('cors');
 const helmet = require('helmet');
 
+const path = require('path');
+
 const keys = require('./config/keys');
 const routes = require('./routes');
 const socket = require('./socket');
@@ -21,6 +23,8 @@ app.use(
   })
 );
 app.use(cors());
+
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 setupDB();
 require('./config/passport')(app);

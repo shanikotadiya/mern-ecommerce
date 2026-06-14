@@ -1,29 +1,33 @@
-const AWS = require('aws-sdk');
+const fs = require('fs');
+const path = require('path');
 
-const keys = require('../config/keys');
-
-exports.s3Upload = async image => {
+exports.localUpload = async (image, req) => {
   let imageUrl = '';
   let imageKey = '';
 
   if (image) {
-    const s3bucket = new AWS.S3({
-      accessKeyId: keys.aws.accessKeyId,
-      secretAccessKey: keys.aws.secretAccessKey,
-      region: keys.aws.region
-    });
-
-    const params = {
-      Bucket: keys.aws.bucketName,
-      Key: image.originalname,
-      Body: image.buffer,
-      ContentType: image.mimetype
-    };
-
-    const s3Upload = await s3bucket.upload(params).promise();
-
-    imageUrl = s3Upload.Location;
-    imageKey = s3Upload.key;
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    const extension = path.extname(image.originalname);
+    const filename = `${uniqueSuffix}${extension}`;
+    
+    // Ensure uploads directory exists
+    const uploadDir = path.join(__dirname, '../uploads');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    
+    const filePath = path.join(uploadDir, filename);
+    await fs.promises.writeFile(filePath, image.buffer);
+    
+    // Construct the fully-qualified image URL
+    if (req) {
+      const protocol = req.protocol;
+      const host = req.get('host');
+      imageUrl = `${protocol}://${host}/uploads/${filename}`;
+    } else {
+      imageUrl = `/uploads/${filename}`;
+    }
+    imageKey = filename;
   }
 
   return { imageUrl, imageKey };
